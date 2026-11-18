@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120">
+  <path d="M50 4 L94 18 V58 C94 88 72 106 50 116 C28 106 6 88 6 58 V18 Z" fill="#0b0b0c" stroke="#ffffff" stroke-width="4"/>
+  <path d="M50 12 L86 24 V58 C86 82 68 98 50 106 Z" fill="#c8102e"/>
+  <text x="50" y="72" font-family="Arial, sans-serif" font-size="22" font-weight="700" fill="#ffffff" text-anchor="middle">ESCUDO</text>
+</svg>
