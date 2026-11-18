@@ -72,7 +72,7 @@ export function Calendario() {
 
         <div>
           <div className="flex items-center justify-between mb-2">
-            <h2 className="font-bold capitalize">{fechaLarga(dia)}</h2>
+            <h2 className="font-bold">{fechaLarga(dia)}</h2>
             {editar && <Boton v="oscuro" onClick={() => setForm(nuevo(dia))}>+ Agregar</Boton>}
           </div>
           <div className="flex flex-col gap-2">
