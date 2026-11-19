@@ -1,9 +1,9 @@
 import { useState } from 'react'
-import { actualizar, useDB, useUsuario } from '../data/store'
+import { enNube, guardarUsuario, useDB, useUsuario } from '../data/store'
 import type { DB, Rol, Usuario } from '../data/types'
 import { equipos, nombreEquipo } from '../data/logic'
 import { NOMBRE_ROL } from '../lib/permisos'
-import { hashPass, uid } from '../lib/util'
+import { uid } from '../lib/util'
 import { Boton, Campo, Chip, Modal, Titulo } from '../components/ui'
 
 export function Usuarios() {
@@ -35,16 +35,19 @@ function FormUsuario({ db, inicial, onClose }: { db: DB; inicial: Usuario; onClo
   const yo = useUsuario()!
   const [u, setU] = useState(inicial)
   const [pass, setPass] = useState('')
+  const [guardando, setGuardando] = useState(false)
+  const [msg, setMsg] = useState('')
+  const minimo = enNube ? 6 : 4
   const set = <K extends keyof Usuario>(k: K, v: Usuario[K]) => setU((x) => ({ ...x, [k]: v }))
   const repetido = db.usuarios.some((x) => x.id !== u.id && x.usuario.toLowerCase() === u.usuario.trim().toLowerCase())
-  const valido = u.nombre.trim() && u.usuario.trim() && !repetido && (inicial.id || pass.length >= 4) && (!pass || pass.length >= 4)
+  const valido = u.nombre.trim() && u.usuario.trim() && !repetido && (inicial.id || pass.length >= minimo) && (!pass || pass.length >= minimo)
   const soyYo = inicial.id === yo.id
   return (
     <Modal titulo={inicial.id ? 'Editar usuario' : 'Nuevo usuario'} onClose={onClose}>
       <Campo label="Nombre (como se va a ver)"><input value={u.nombre} placeholder="Ej.: Prof. Martín" onChange={(e) => set('nombre', e.target.value)} /></Campo>
       <Campo label="Usuario para ingresar"><input value={u.usuario} autoCapitalize="none" onChange={(e) => set('usuario', e.target.value.replace(/\s/g, '').toLowerCase())} /></Campo>
       {repetido && <p className="text-rojo-claro text-sm -mt-2 mb-2">Ese usuario ya existe.</p>}
-      <Campo label={inicial.id ? 'Nueva contraseña (dejar vacío para no cambiarla)' : 'Contraseña (mínimo 4 caracteres)'}><input type="text" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" /></Campo>
+      <Campo label={inicial.id ? 'Nueva contraseña (dejar vacío para no cambiarla)' : `Contraseña (mínimo ${minimo} caracteres)`}><input type="text" value={pass} onChange={(e) => setPass(e.target.value)} autoComplete="new-password" /></Campo>
       <Campo label="Área">
         <div className="flex gap-1.5">
           {(['coordinacion', 'administracion', 'entrenador'] as Rol[]).map((r) => (
@@ -70,11 +73,15 @@ function FormUsuario({ db, inicial, onClose }: { db: DB; inicial: Usuario; onClo
         </Campo>
       )}
       {!soyYo && <label className="flex items-center gap-2 text-sm text-white mb-3"><input type="checkbox" checked={u.activo} onChange={(e) => set('activo', e.target.checked)} /> Puede ingresar</label>}
-      <Boton grande className="w-full" disabled={!valido} onClick={() => {
-        const nuevo: Usuario = { ...u, id: u.id || uid(), nombre: u.nombre.trim(), usuario: u.usuario.trim(), passHash: pass ? hashPass(pass) : u.passHash, equipos: u.rol === 'entrenador' ? u.equipos : [] }
-        actualizar((d) => { d.usuarios = inicial.id ? d.usuarios.map((x) => (x.id === nuevo.id ? nuevo : x)) : [...d.usuarios, nuevo] }, `${inicial.id ? 'Editó' : 'Creó'} usuario ${nuevo.usuario} (${NOMBRE_ROL[nuevo.rol]})${pass && inicial.id ? ' y cambió su contraseña' : ''}`)
-        onClose()
-      }}>Guardar</Boton>
+      {msg && <p className="text-rojo-claro text-sm mb-2">{msg}</p>}
+      <Boton grande className="w-full" disabled={!valido || guardando} onClick={async () => {
+        const nuevo: Usuario = { ...u, id: u.id || uid(), nombre: u.nombre.trim(), usuario: u.usuario.trim(), equipos: u.rol === 'entrenador' ? u.equipos : [] }
+        setGuardando(true)
+        const err = await guardarUsuario(nuevo, pass, !inicial.id)
+        setGuardando(false)
+        if (err) setMsg(err)
+        else onClose()
+      }}>{guardando ? 'Guardando…' : 'Guardar'}</Boton>
     </Modal>
   )
 }

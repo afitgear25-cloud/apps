@@ -103,7 +103,7 @@ function FormPrenda({ inicial, onClose }: { inicial: Prenda; onClose: () => void
   const set = <K extends keyof Prenda>(k: K, v: Prenda[K]) => setP((x) => ({ ...x, [k]: v }))
   return (
     <Modal titulo={inicial.id ? 'Editar prenda' : 'Nueva prenda'} onClose={onClose}>
-      <div className="mb-4"><FotoInput valor={p.foto} onChange={(v) => set('foto', v)} /></div>
+      <div className="mb-4"><FotoInput carpeta="ropa" valor={p.foto} onChange={(v) => set('foto', v)} /></div>
       <Campo label="Prenda"><input value={p.nombre} placeholder="Ej.: Camiseta oficial" onChange={(e) => set('nombre', e.target.value)} /></Campo>
       <Campo label="Precio"><input type="number" min={0} inputMode="numeric" value={p.precio} onChange={(e) => set('precio', Math.max(0, Number(e.target.value)))} /></Campo>
       <label className="flex items-center gap-2 text-sm text-white mb-3"><input type="checkbox" checked={p.obligatoria} onChange={(e) => set('obligatoria', e.target.checked)} /> Obligatoria para todos los jugadores</label>

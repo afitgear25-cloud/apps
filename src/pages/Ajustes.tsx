@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { actualizar, getDB, reemplazarTodo, restaurarEjemplo, useDB } from '../data/store'
+import { actualizar, enNube, getDB, reemplazarTodo, restaurarEjemplo, useDB } from '../data/store'
+import { subirEscudo } from '../data/nube'
 import type { DB, Division } from '../data/types'
 import { leerEscudo } from '../lib/images'
 import { descargar } from '../lib/descargar'
@@ -25,7 +26,10 @@ export function Ajustes() {
               <input ref={escudoRef} type="file" accept="image/*" className="hidden" onChange={async (e) => {
                 const f = e.target.files?.[0]
                 if (!f) return
-                const src = await leerEscudo(f)
+                let src = await leerEscudo(f)
+                if (enNube) {
+                  try { src = await subirEscudo(src) } catch { alert('No se pudo subir el escudo. Revisá la conexión.'); return }
+                }
                 actualizar((d) => { d.config.escudo = src }, 'Cambió el escudo del club')
                 e.target.value = ''
               }} />
@@ -52,10 +56,10 @@ export function Ajustes() {
 
         <Tarjeta>
           <h2 className="font-bold mb-1">Respaldo</h2>
-          <p className="text-sm text-tenue mb-3">Los datos viven en este dispositivo. Bajá un respaldo seguido; con él podés pasar todo a otro celular o computadora.</p>
+          <p className="text-sm text-tenue mb-3">{enNube ? 'Los datos están en la nube. Igual podés bajar una copia completa cuando quieras (además del Excel).' : 'Los datos viven en este dispositivo. Bajá un respaldo seguido; con él podés pasar todo a otro celular o computadora.'}</p>
           <div className="flex flex-wrap gap-2">
             <Boton onClick={() => descargar(new Blob([JSON.stringify(getDB())], { type: 'application/json' }), `respaldo-club-${hoy()}.json`)}>Bajar respaldo</Boton>
-            <input ref={backupRef} type="file" accept="application/json,.json" className="hidden" onChange={async (e) => {
+            {!enNube && <><input ref={backupRef} type="file" accept="application/json,.json" className="hidden" onChange={async (e) => {
               const f = e.target.files?.[0]
               if (!f) return
               try {
@@ -68,7 +72,7 @@ export function Ajustes() {
               e.target.value = ''
             }} />
             <Boton v="oscuro" onClick={() => backupRef.current?.click()}>Cargar respaldo</Boton>
-            <Boton v="fantasma" onClick={() => { if (confirm('¿Borrar todo y volver a los datos de ejemplo?')) restaurarEjemplo() }}>Volver a datos de ejemplo</Boton>
+            <Boton v="fantasma" onClick={() => { if (confirm('¿Borrar todo y volver a los datos de ejemplo?')) restaurarEjemplo() }}>Volver a datos de ejemplo</Boton></>}
           </div>
         </Tarjeta>
 

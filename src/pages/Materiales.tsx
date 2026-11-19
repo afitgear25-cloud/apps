@@ -79,7 +79,7 @@ function FormMaterial({ db, inicial, onClose }: { db: DB; inicial: Material; onC
   const valido = m.nombre.trim() && m.total >= 0 && m.rotos >= 0 && m.rotos + pr <= m.total
   return (
     <Modal titulo={inicial.id ? 'Editar material' : 'Nuevo material'} onClose={onClose}>
-      <div className="mb-4"><FotoInput valor={m.foto} onChange={(v) => set('foto', v)} /></div>
+      <div className="mb-4"><FotoInput carpeta="materiales" valor={m.foto} onChange={(v) => set('foto', v)} /></div>
       <Campo label="Nombre"><input value={m.nombre} placeholder="Ej.: Pelotas N°5" onChange={(e) => set('nombre', e.target.value)} /></Campo>
       <div className="grid grid-cols-2 gap-2">
         <Campo label="Cantidad total"><input type="number" min={0} inputMode="numeric" value={m.total} onChange={(e) => set('total', Math.max(0, Number(e.target.value)))} /></Campo>

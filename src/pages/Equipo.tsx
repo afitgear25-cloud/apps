@@ -128,10 +128,16 @@ function AsistenciaTab({ db, equipoId, jugadores }: { db: DB; equipoId: string; 
         <div className="text-tenue pb-2">{fechaLarga(fecha)}</div>
         <Boton v="oscuro" className="ml-auto" onClick={() => exportar.asistencia(db, equipoId)}>Bajar Excel</Boton>
       </div>
-      <Planilla key={equipoId + fecha} db={db} equipoId={equipoId} fecha={fecha} jugadores={jugadores} />
+      {/* Si otra persona guarda esta misma planilla, se vuelve a mostrar con sus datos. */}
+      <Planilla key={`${equipoId}|${fecha}|${versionPlanilla(db, equipoId, fecha)}`} db={db} equipoId={equipoId} fecha={fecha} jugadores={jugadores} />
       <Historial db={db} equipoId={equipoId} jugadores={jugadores} onElegir={setFecha} />
     </>
   )
+}
+
+function versionPlanilla(db: DB, equipoId: string, fecha: string) {
+  const a = db.asistencias.find((x) => x.id === `${equipoId}|${fecha}`)
+  return a ? `${a.por}|${JSON.stringify(a.registros)}` : ''
 }
 
 function Planilla({ db, equipoId, fecha, jugadores }: { db: DB; equipoId: string; fecha: string; jugadores: Jugador[] }) {

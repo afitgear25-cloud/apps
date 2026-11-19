@@ -1,16 +1,19 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { actualizar, useDB } from '../data/store'
 import type { Jugador } from '../data/types'
 import { aptoVencido, equipoBase, equipos, equiposDeJugador, mesesAdeudados, nombreCompleto, nombreEquipo } from '../data/logic'
 import { hoy, mesActual, uid } from '../lib/util'
-import { Boton, Campo, Chip, Foto, FotoInput, Tarjeta, Titulo, Vacio } from '../components/ui'
+import { Boton, Campo, Chip, Foto, FotoInput, Modal, Tarjeta, Titulo, Vacio } from '../components/ui'
+import { bajarPlanillaModelo, leerJugadores } from '../lib/importar'
 
 export function Jugadores() {
   const db = useDB()
   const [q, setQ] = useState('')
   const [div, setDiv] = useState('')
   const [verBajas, setVerBajas] = useState(false)
+  const [importado, setImportado] = useState<Awaited<ReturnType<typeof leerJugadores>> | null>(null)
+  const archivo = useRef<HTMLInputElement>(null)
   const f = hoy()
   const lista = db.jugadores
     .filter((j) => j.activo !== verBajas)
@@ -19,7 +22,16 @@ export function Jugadores() {
     .sort((a, b) => a.apellido.localeCompare(b.apellido))
   return (
     <>
-      <Titulo sub={`${lista.length} jugadores`} extra={<Link to="/jugadores/nuevo"><Boton>+ Nuevo jugador</Boton></Link>}>Jugadores</Titulo>
+      <Titulo sub={`${lista.length} jugadores`} extra={<>
+        <input ref={archivo} type="file" accept=".xlsx" className="hidden" onChange={async (e) => {
+          const file = e.target.files?.[0]
+          e.target.value = ''
+          if (!file) return
+          try { setImportado(await leerJugadores(file, db.jugadores)) } catch (err) { console.error(err); setImportado({ nuevos: [], errores: ['No se pudo leer el archivo. Tiene que ser un Excel (.xlsx).'] }) }
+        }} />
+        <Boton v="oscuro" onClick={() => archivo.current?.click()}>Importar Excel</Boton>
+        <Link to="/jugadores/nuevo"><Boton>+ Nuevo jugador</Boton></Link>
+      </>}>Jugadores</Titulo>
       <div className="grid sm:grid-cols-3 gap-2 mb-4">
         <input placeholder="Buscar por nombre o DNI…" value={q} onChange={(e) => setQ(e.target.value)} />
         <select value={div} onChange={(e) => setDiv(e.target.value)}>
@@ -33,7 +45,34 @@ export function Jugadores() {
         </select>
         <label className="flex items-center gap-2 text-sm text-white m-0"><input type="checkbox" checked={verBajas} onChange={(e) => setVerBajas(e.target.checked)} /> Ver jugadores dados de baja</label>
       </div>
-      {!lista.length && <Vacio>No hay jugadores con ese filtro.</Vacio>}
+      {!lista.length && <Vacio>{db.jugadores.length ? 'No hay jugadores con ese filtro.' : <>Todavía no hay jugadores. Cargalos de a uno con “+ Nuevo jugador” o todos juntos con “Importar Excel”.<br /><button className="text-rojo-claro underline mt-2" onClick={() => void bajarPlanillaModelo()}>Bajar planilla modelo</button></>}</Vacio>}
+      {importado && (
+        <Modal titulo="Importar jugadores" onClose={() => setImportado(null)}>
+          <p className="mb-2"><b className="text-2xl">{importado.nuevos.length}</b> jugadores listos para cargar.</p>
+          {importado.nuevos.length > 0 && (
+            <ul className="text-sm text-tenue max-h-40 overflow-y-auto mb-3">
+              {importado.nuevos.slice(0, 100).map((j) => {
+                const b = equipoBase(db, j)
+                return <li key={j.id}>{nombreCompleto(j)} · {b ? nombreEquipo(db, b) : `${j.nacimiento.slice(0, 4)} (sin categoría)`}</li>
+              })}
+            </ul>
+          )}
+          {importado.errores.length > 0 && (
+            <div className="text-sm text-amber-300 max-h-40 overflow-y-auto mb-3">
+              <b>No se cargan ({importado.errores.length}):</b>
+              <ul>{importado.errores.slice(0, 50).map((e, i) => <li key={i}>{e}</li>)}</ul>
+            </div>
+          )}
+          <div className="flex gap-2">
+            <Boton grande className="flex-1" disabled={!importado.nuevos.length} onClick={() => {
+              const nuevos = importado.nuevos
+              actualizar((d) => { d.jugadores.push(...nuevos) }, `Importó ${nuevos.length} jugadores desde Excel`)
+              setImportado(null)
+            }}>Cargar {importado.nuevos.length}</Boton>
+            <Boton grande v="oscuro" onClick={() => void bajarPlanillaModelo()}>Planilla modelo</Boton>
+          </div>
+        </Modal>
+      )}
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {lista.map((j) => {
           const base = equipoBase(db, j)
@@ -87,7 +126,7 @@ export function JugadorForm() {
       <button type="button" onClick={() => nav(-1)} className="text-sm text-tenue hover:text-white">← Volver</button>
       <Titulo>{existente ? nombreCompleto(existente) : 'Nuevo jugador'}</Titulo>
       <Tarjeta className="mb-4">
-        <div className="mb-4"><FotoInput valor={j.foto} onChange={(v) => set('foto', v)} /></div>
+        <div className="mb-4"><FotoInput carpeta="jugadores" valor={j.foto} onChange={(v) => set('foto', v)} /></div>
         <div className="grid sm:grid-cols-2 gap-x-4">
           <Campo label="Nombre *"><input value={j.nombre} onChange={(e) => set('nombre', e.target.value)} required /></Campo>
           <Campo label="Apellido *"><input value={j.apellido} onChange={(e) => set('apellido', e.target.value)} required /></Campo>

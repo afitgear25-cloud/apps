@@ -1,5 +1,6 @@
-import { useRef, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { achicarFoto } from '../lib/images'
+import { subirFoto, urlDeFoto } from '../data/nube'
 
 type Variante = 'rojo' | 'oscuro' | 'blanco' | 'fantasma'
 const VARIANTES: Record<Variante, string> = {
@@ -96,7 +97,23 @@ export function Campo({ label, children, className = '' }: { label: string; chil
   )
 }
 
-export function Foto({ src, alt, className = '' }: { src?: string; alt: string; className?: string }) {
+/** Las fotos guardadas en la nube vienen como `sb:ruta` y se convierten en un link temporal. */
+function useSrc(src?: string) {
+  const inicial = src?.startsWith('sb:') ? urlDeFoto(src) : src
+  const [url, setUrl] = useState<string | undefined>(typeof inicial === 'string' ? inicial : undefined)
+  useEffect(() => {
+    if (!src?.startsWith('sb:')) return setUrl(src)
+    const r = urlDeFoto(src)
+    if (typeof r === 'string') return setUrl(r)
+    let vivo = true
+    r.then((u) => vivo && setUrl(u || undefined))
+    return () => { vivo = false }
+  }, [src])
+  return url
+}
+
+export function Foto({ src: ref, alt, className = '' }: { src?: string; alt: string; className?: string }) {
+  const src = useSrc(ref)
   if (src) return <img src={src} alt={alt} className={`object-cover bg-panel-2 ${className}`} />
   return (
     <div className={`bg-panel-2 flex items-center justify-center text-tenue ${className}`} aria-label={`${alt} (sin foto)`}>
@@ -109,7 +126,7 @@ export function Foto({ src, alt, className = '' }: { src?: string; alt: string; 
   )
 }
 
-export function FotoInput({ valor, onChange }: { valor?: string; onChange: (v?: string) => void }) {
+export function FotoInput({ valor, onChange, carpeta = 'varios' }: { valor?: string; onChange: (v?: string) => void; carpeta?: string }) {
   const ref = useRef<HTMLInputElement>(null)
   const [cargando, setCargando] = useState(false)
   return (
@@ -126,7 +143,7 @@ export function FotoInput({ valor, onChange }: { valor?: string; onChange: (v?: 
             if (!f) return
             setCargando(true)
             try {
-              onChange(await achicarFoto(f))
+              onChange(await subirFoto(await achicarFoto(f), carpeta))
             } finally {
               setCargando(false)
               e.target.value = ''

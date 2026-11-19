@@ -1,7 +1,6 @@
 import { useState } from 'react'
-import { iniciarSesion, useDB } from '../data/store'
+import { enNube, ingresar, useDB } from '../data/store'
 import type { Rol } from '../data/types'
-import { hashPass } from '../lib/util'
 import { NOMBRE_ROL } from '../lib/permisos'
 import { Boton, Escudo } from '../components/ui'
 
@@ -17,15 +16,15 @@ export function Login() {
   const [usuario, setUsuario] = useState('')
   const [pass, setPass] = useState('')
   const [error, setError] = useState('')
+  const [entrando, setEntrando] = useState(false)
 
-  const entrar = (e: React.FormEvent) => {
+  const entrar = async (e: React.FormEvent) => {
     e.preventDefault()
-    const u = db.usuarios.find((x) => x.activo && x.rol === rol && x.usuario.toLowerCase() === usuario.trim().toLowerCase())
-    if (!u || u.passHash !== hashPass(pass)) {
-      setError('Usuario o contraseña incorrectos')
-      return
-    }
-    iniciarSesion(u.id)
+    if (!rol) return
+    setEntrando(true)
+    const err = await ingresar(rol, usuario, pass)
+    setEntrando(false)
+    if (err) setError(err)
   }
 
   return (
@@ -41,7 +40,7 @@ export function Login() {
             {ROLES.map((r) => (
               <button
                 key={r.rol}
-                onClick={() => { setRol(r.rol); setError(''); setUsuario(r.rol === 'coordinacion' ? 'coordinador' : r.rol === 'administracion' ? 'admin' : '') }}
+                onClick={() => { setRol(r.rol); setError(''); setUsuario(!enNube && r.rol === 'coordinacion' ? 'coordinador' : !enNube && r.rol === 'administracion' ? 'admin' : '') }}
                 className="group bg-panel border border-borde hover:border-rojo rounded-2xl px-5 py-4 text-left transition"
               >
                 <div className="text-lg font-bold group-hover:text-rojo-claro">{NOMBRE_ROL[r.rol]}</div>
@@ -53,17 +52,19 @@ export function Login() {
           <form onSubmit={entrar} className="bg-panel border border-borde rounded-2xl p-5">
             <div className="text-xs uppercase tracking-widest text-rojo-claro font-bold mb-3">{NOMBRE_ROL[rol]}</div>
             <label htmlFor="usuario">Usuario</label>
-            <input id="usuario" autoComplete="username" value={usuario} onChange={(e) => setUsuario(e.target.value)} className="mb-3" autoFocus={rol === 'entrenador'} />
+            <input id="usuario" autoComplete="username" value={usuario} onChange={(e) => setUsuario(e.target.value)} className="mb-3" autoCapitalize="none" autoFocus={enNube || rol === 'entrenador'} />
             <label htmlFor="pass">Contraseña</label>
-            <input id="pass" type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus={rol !== 'entrenador'} />
+            <input id="pass" type="password" autoComplete="current-password" value={pass} onChange={(e) => setPass(e.target.value)} autoFocus={!enNube && rol !== 'entrenador'} />
             {error && <p className="text-rojo-claro text-sm mt-3">{error}</p>}
-            <Boton grande className="w-full mt-4" type="submit">Ingresar</Boton>
+            <Boton grande className="w-full mt-4" type="submit" disabled={entrando || !usuario || !pass}>{entrando ? 'Ingresando…' : 'Ingresar'}</Boton>
             <Boton type="button" v="fantasma" className="w-full mt-2" onClick={() => { setRol(null); setPass('') }}>← Volver</Boton>
           </form>
         )}
-        <p className="text-xs text-tenue text-center mt-6">
-          Datos de ejemplo: coordinador / admin / martin, laura o diego — contraseña <b>1234</b>
-        </p>
+        {!enNube && (
+          <p className="text-xs text-tenue text-center mt-6">
+            Modo prueba: coordinador / admin / martin, laura o diego — contraseña <b>1234</b>
+          </p>
+        )}
       </div>
     </div>
   )
